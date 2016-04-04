@@ -117,7 +117,7 @@ namespace MUSIC {
     std::vector<Port*> ports_;
     std::vector<Connection*>* connections_;
     static size_t instance_count_;
-    static MPI::Intracomm* comm_;
+    static MPI::Intracomm comm_;
     // Since we don't want to expose this internal interface to the
     // user we put the member functions in the private part and give
     // these classes access through a friend declaration.  Classes are
@@ -179,6 +179,18 @@ namespace MUSIC {
     }
 
     void addPort (Port* p);
+
+    std::vector<Connection*> global_connections_list()
+    {
+
+        std::vector<Connection*> global_connection_list;
+        for( std::vector<Setup*>::iterator it = data_.setups_.begin(); it != data_.setups_.end(); ++it )
+        {
+            std::vector<Connection*>* p = (*it)->connections();
+            global_connection_list.insert(global_connection_list.end(), p->begin(), p->end());
+        }
+        return global_connection_list;
+    }
     
     std::vector<Connection*>* connections ()
     {
