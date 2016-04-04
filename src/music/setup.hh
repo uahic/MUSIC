@@ -82,8 +82,6 @@ namespace MUSIC {
     static const char* const configEnvVarName;
     static const char* const opConfigFileName;
     static const char* const opAppLabel;
-    static size_t instance_count_;
-    static MPI::Intracomm* comm_;
 
   public:
     Setup (int& argc, char**& argv);
@@ -118,6 +116,8 @@ namespace MUSIC {
     static GlobalSetupData data_;
     std::vector<Port*> ports_;
     std::vector<Connection*>* connections_;
+    static size_t instance_count_;
+    static MPI::Intracomm* comm_;
     // Since we don't want to expose this internal interface to the
     // user we put the member functions in the private part and give
     // these classes access through a friend declaration.  Classes are
