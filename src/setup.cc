@@ -30,7 +30,7 @@ namespace MUSIC {
 
 
   GlobalSetupData Setup::data_;
-  MPI::Intracomm* Setup::comm_ = NULL;
+  MPI::Intracomm Setup::comm_;
   size_t Setup::instance_count_ = 0;
   static std::string err_MPI_Init = "MPI_Init was called before the Setup constructor";
   const char* const Setup::opConfigFileName = "--music-config";
@@ -38,23 +38,11 @@ namespace MUSIC {
 
   void GlobalSetupData::clean_up()
   {
-      if ( temporalNegotiator_ != NULL && launchedByMusic_)
-      {
-        delete temporalNegotiator_;
-        temporalNegotiator_ = NULL;
-      }
+      delete temporalNegotiator_;
 
-      if( config_ != NULL)
-      {
-          delete config_;
-          config_ = NULL;
-      }
+      delete config_;
 
-      if( argv_ != NULL)
-      {
-          delete argv_;
-          argv_ = NULL;
-      }
+      delete argv_;
   }
 
   GlobalSetupData::~GlobalSetupData()
@@ -122,7 +110,6 @@ namespace MUSIC {
         }
         if( instance_count_ == 1 )
         {
-            delete comm_;
             data_.clean_up();
         }
     }
@@ -181,12 +168,12 @@ namespace MUSIC {
             argc = data_.argc_;
             argv = data_.argv_;
           }
-        comm_ = new MPI::Intracomm(MPI::COMM_WORLD.Split (data_.config_->Color (), myRank));
+        comm_ = MPI::COMM_WORLD.Split (data_.config_->Color (), myRank);
       }
     else
       {
         // launched with mpirun
-        comm_ = &MPI::COMM_WORLD;
+        comm_ = MPI::COMM_WORLD;
         data_.timebase_ = MUSIC_DEFAULT_TIMEBASE;
       }
   }
@@ -357,7 +344,7 @@ namespace MUSIC {
   MPI::Intracomm
   Setup::communicator ()
   {
-    return *comm_;
+    return comm_;
   }
 
 
@@ -399,7 +386,7 @@ namespace MUSIC {
   int
   Setup::nProcs ()
   {
-    return comm_->Get_size ();
+    return comm_.Get_size ();
   }
 
 
