@@ -30,7 +30,7 @@ namespace MUSIC {
 
 
   GlobalSetupData Setup::data_;
-  MPI::Intracomm* comm_ = NULL;
+  MPI::Intracomm* Setup::comm_ = NULL;
   size_t Setup::instance_count_ = 0;
   static std::string err_MPI_Init = "MPI_Init was called before the Setup constructor";
   const char* const Setup::opConfigFileName = "--music-config";
@@ -357,7 +357,7 @@ namespace MUSIC {
   MPI::Intracomm
   Setup::communicator ()
   {
-    return comm_;
+    return *comm_;
   }
 
 
@@ -399,7 +399,7 @@ namespace MUSIC {
   int
   Setup::nProcs ()
   {
-    return comm_.Get_size ();
+    return comm_->Get_size ();
   }
 
 
