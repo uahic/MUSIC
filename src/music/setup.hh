@@ -48,6 +48,7 @@ namespace MUSIC {
   {
     GlobalSetupData()
         : setups_(),
+        comm_(MPI::COMM_NULL),
         config_(NULL),
         temporalNegotiator_(NULL),
         argc_(),
@@ -58,11 +59,23 @@ namespace MUSIC {
       {
       }
 
-    ~GlobalSetupData();
+    ~GlobalSetupData()
+    {
 
-    void clean_up();
+       if( launchedByMusic_ )
+       {
+          delete temporalNegotiator_;
+       }
+
+      delete config_;
+
+      delete argv_;
+    }
+
+
 
     std::vector<Setup*> setups_;
+    MPI::Intracomm comm_;
     Configuration* config_;
     TemporalNegotiator* temporalNegotiator_;
     int argc_;
@@ -115,9 +128,7 @@ namespace MUSIC {
   private:
     static GlobalSetupData data_;
     std::vector<Port*> ports_;
-    std::vector<Connection*>* connections_;
-    static size_t instance_count_;
-    static MPI::Intracomm comm_;
+    std::vector<Connection*> connections_;
     // Since we don't want to expose this internal interface to the
     // user we put the member functions in the private part and give
     // these classes access through a friend declaration.  Classes are
@@ -130,6 +141,11 @@ namespace MUSIC {
     friend class InputPort;
     friend class TemporalNegotiator;
     friend class ApplicationNode;
+
+    static std::vector<Setup*> getAllSetupObjects( )
+    {
+        return std::vector<Setup*>(data_.setups_);
+    }
     
     double timebase () { return data_.timebase_; }
 
@@ -162,42 +178,29 @@ namespace MUSIC {
 
     PortConnectorInfo portConnections (const std::string localName);
 
-    std::vector<Port*>* ports ()
+    std::vector<Port*> ports ()
     {
-      return &ports_;
+      return std::vector<Port*>(ports_);
     }    
-
-    std::vector<Port*> global_ports()
-    {
-        std::vector<Port*> global_port_list;
-        for( std::vector<Setup*>::iterator it = data_.setups_.begin(); it != data_.setups_.end(); ++it )
-        {
-            std::vector<Port*>* p = (*it)->ports();
-            global_port_list.insert(global_port_list.end(), p->begin(), p->end());
-        }
-        return global_port_list;
-    }
 
     void addPort (Port* p);
 
-    std::vector<Connection*> global_connections_list()
+    void clearPorts()
     {
-
-        std::vector<Connection*> global_connection_list;
-        for( std::vector<Setup*>::iterator it = data_.setups_.begin(); it != data_.setups_.end(); ++it )
-        {
-            std::vector<Connection*>* p = (*it)->connections();
-            global_connection_list.insert(global_connection_list.end(), p->begin(), p->end());
-        }
-        return global_connection_list;
+        ports_.clear();
     }
     
-    std::vector<Connection*>* connections ()
+    std::vector<Connection*> connections ()
     {
       return connections_;
     }
     
     void addConnection (Connection* c);
+
+    void clearConnections()
+    {
+        connections_.clear(); 
+    }
 
     TemporalNegotiator* temporalNegotiator () { return data_.temporalNegotiator_; }
     

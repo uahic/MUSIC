@@ -30,29 +30,14 @@ namespace MUSIC {
 
 
   GlobalSetupData Setup::data_;
-  MPI::Intracomm Setup::comm_;
-  size_t Setup::instance_count_ = 0;
   static std::string err_MPI_Init = "MPI_Init was called before the Setup constructor";
   const char* const Setup::opConfigFileName = "--music-config";
   const char* const Setup::opAppLabel = "--app-label";
 
-  void GlobalSetupData::clean_up()
-  {
-      delete temporalNegotiator_;
-
-      delete config_;
-
-      delete argv_;
-  }
-
-  GlobalSetupData::~GlobalSetupData()
-  {
-    clean_up();
-  }
 
   Setup::Setup (int& argc, char**& argv)
   {
-    if( instance_count_ == 0 )
+    if( data_.setups_.size() == 0 )
     {
         data_.argc_ = argc;
         data_.argv_ = argv;
@@ -62,7 +47,6 @@ namespace MUSIC {
         MPI::Init (argc, argv);
         init (argc, argv);
     }
-    instance_count_++;
     data_.setups_.push_back(this);
   }
 
@@ -70,7 +54,7 @@ namespace MUSIC {
   Setup::Setup (int& argc, char**& argv, int required, int* provided)
   {
       
-    if( instance_count_ == 0 )
+    if( data_.setups_.size() == 0 )
     {
         data_.argc_ = argc;
         data_.argv_ = argv;
@@ -85,178 +69,176 @@ namespace MUSIC {
 #endif
         init (argc, argv);
     }
-    instance_count_++;
     data_.setups_.push_back(this);
   }
 
 
   Setup::~Setup ()
     {
-        for (std::vector<Port*>::iterator i = ports_.begin ();
-            i != ports_.end (); ++i)
-        {
-            (*i)->setupCleanup ();
-        }
-        for (std::vector<Connection*>::iterator i = connections_->begin ();
-            i != connections_->end (); ++i)
-        {
-            delete *i;
-        }
-        instance_count_--;
+       // for (std::vector<Port*>::iterator i = ports_.begin ();
+       //     i != ports_.end (); ++i)
+       // {
+       //     (*i)->setupCleanup ();
+       // }
+       // for (std::vector<Connection*>::iterator i = connections_.begin ();
+       //     i != connections_.end (); ++i)
+       // {
+       //         delete *i;
+       // }
         std::vector<Setup*>::iterator it = std::find(data_.setups_.begin(), data_.setups_.end(), this);
         if(it != data_.setups_.end())
         {
-            data_.setups_.erase(it);
+            //data_.setups_.erase(it);
         }
-        if( instance_count_ == 1 )
+
+        if( isLastSetupInstance() )
         {
-            data_.clean_up();
+            data_.comm_ = MPI::COMM_NULL;
         }
     }
 
 
-  void
-  Setup::init (int& argc, char**& argv)
-  {
-    int myRank = MPI::COMM_WORLD.Get_rank ();
-    std::string config = "";
-    data_.launchedByMusic_ = false;
-    data_.postponeSetup_ = false;
-
-    if (launchedWithExec (config))
+      void
+      Setup::init (int& argc, char**& argv)
       {
-        assert(config.length() > 0);
-        data_.launchedByMusic_ = true;
-        if (!config.compare (0, 8, "POSTPONE"))
-          data_.postponeSetup_ = true;
-        data_.config_ = new Configuration (config);
-      }
-    else if (launchedMPMD (argc, argv, config))
-      {
-        data_.launchedByMusic_ = true;
-        std::string config_file;
-        loadConfigFile (config, config_file);
+        int myRank = MPI::COMM_WORLD.Get_rank ();
+        std::string config = "";
+        data_.launchedByMusic_ = false;
+        data_.postponeSetup_ = false;
 
-        std::string app_label;
-        std::string binary (argv[0]);
-        // argv[0] is the name of the program,
-        // or an empty string if the name is not available
-        if (!getOption (argc, argv, opAppLabel, app_label)
-            && binary.length () == 0)
+        if (launchedWithExec (config))
           {
-            std::ostringstream oss;
-            oss << "MUSIC: use --app-label to specify application label";
-            error0 (oss.str ());
+            assert(config.length() > 0);
+            data_.launchedByMusic_ = true;
+            if (!config.compare (0, 8, "POSTPONE"))
+              data_.postponeSetup_ = true;
+            data_.config_ = new Configuration (config);
           }
-
-        std::istringstream config_istream (config_file);
-        data_.config_ = new Configuration ();
-        ApplicationMapper app_mapper(data_.config_);
-        app_mapper.map(&config_istream, binary, app_label);
-      }
-    else
-      data_.config_ = new Configuration ();
-
-
-    connections_ = new std::vector<Connection*>; // destroyed by runtime
-    if (launchedByMusic ())
-      {
-        // launched by the music utility
-        if (!data_.postponeSetup_)
+        else if (launchedMPMD (argc, argv, config))
           {
-            fullInit ();
-            argc = data_.argc_;
-            argv = data_.argv_;
+            data_.launchedByMusic_ = true;
+            std::string config_file;
+            loadConfigFile (config, config_file);
+
+            std::string app_label;
+            std::string binary (argv[0]);
+            // argv[0] is the name of the program,
+            // or an empty string if the name is not available
+            if (!getOption (argc, argv, opAppLabel, app_label)
+                && binary.length () == 0)
+              {
+                std::ostringstream oss;
+                oss << "MUSIC: use --app-label to specify application label";
+                error0 (oss.str ());
+              }
+
+            std::istringstream config_istream (config_file);
+            data_.config_ = new Configuration ();
+            ApplicationMapper app_mapper(data_.config_);
+            app_mapper.map(&config_istream, binary, app_label);
           }
-        comm_ = MPI::COMM_WORLD.Split (data_.config_->Color (), myRank);
-      }
-    else
-      {
-        // launched with mpirun
-        comm_ = MPI::COMM_WORLD;
-        data_.timebase_ = MUSIC_DEFAULT_TIMEBASE;
-      }
-  }
+        else
+          data_.config_ = new Configuration ();
 
 
-  bool
-  Setup::getOption (int argc, char** argv, std::string option, std::string& result)
-  {
-    result.assign("");
-    for (int i = 1; i < argc; ++i)
-       if (option.compare(argv[i]) == 0 && argc > i){
-           result.assign(argv[i+1]);  // skip options
-             return true;
-       }
-     return false;
-  }
-
-
-  bool
-  Setup::launchedWithExec (std::string &result)
-  {
-    // is _MUSIC_CONFIG_ env variable is set ?
-    char* res = getenv (Configuration::configEnvVarName);
-    if (res != NULL)
-      {
-        result.assign (res);
-        return true;
-      }
-    else
-      return false;
-  }
-
-
-  bool
-  Setup::launchedMPMD (int argc, char** argv, std::string& config)
-  {
-    // if given option --music-config,
-    // the launch is categorized as MPMD
-    if (!getOption(argc, argv, opConfigFileName, config) )
-      return false;
-    else
-      return true;
-  }
-
-
-  void
-  Setup::loadConfigFile (std::string filename, std::string &result)
-  {
-    std::ifstream config;
-    char* buffer;
-    int size = 0;
-    int myRank = MPI::COMM_WORLD.Get_rank ();
-    // Rank #0 is reading a file and broadcast it to each rank in the launch
-    if (myRank == 0)
-      {
-        config.open (filename.c_str ());
-        if (!config.is_open ())
+        if (launchedByMusic ())
           {
-            std::ostringstream oss;
-            oss << "MUSIC: Couldn't open configuration file: " << filename;
-            error0 (oss.str ());
+            // launched by the music utility
+            if (!data_.postponeSetup_)
+              {
+                fullInit ();
+                argc = data_.argc_;
+                argv = data_.argv_;
+              }
+            data_.comm_ = MPI::COMM_WORLD.Split (data_.config_->Color (), myRank);
           }
-
-        size = config.tellg ();
-        config.seekg (0, std::ios_base::end);
-        long cur_pos = config.tellg ();
-        size = cur_pos - size;
-        config.seekg (0, std::ios_base::beg);
+        else
+          {
+            // launched with mpirun
+            data_.comm_ = MPI::COMM_WORLD;
+            data_.timebase_ = MUSIC_DEFAULT_TIMEBASE;
+          }
       }
-    // first broadcast the size of the file
-    MPI::COMM_WORLD.Bcast (&size, 1, MPI::INT, 0);
-    buffer = new char[size];
 
-    if (myRank == 0)
-      config.read (buffer, size);
-    // then broadcast the file but itself
-    MPI::COMM_WORLD.Bcast (buffer, size, MPI::BYTE, 0);
-    // parseMapFile (app_name, std::string (buffer, size), result);
-    if (myRank == 0)
-      config.close ();
 
-    result.assign (buffer);
-    delete[] buffer;
+      bool
+      Setup::getOption (int argc, char** argv, std::string option, std::string& result)
+      {
+        result.assign("");
+        for (int i = 1; i < argc; ++i)
+           if (option.compare(argv[i]) == 0 && argc > i){
+               result.assign(argv[i+1]);  // skip options
+                 return true;
+           }
+         return false;
+      }
+
+
+      bool
+      Setup::launchedWithExec (std::string &result)
+      {
+        // is _MUSIC_CONFIG_ env variable is set ?
+        char* res = getenv (Configuration::configEnvVarName);
+        if (res != NULL)
+          {
+            result.assign (res);
+            return true;
+          }
+        else
+          return false;
+      }
+
+
+      bool
+      Setup::launchedMPMD (int argc, char** argv, std::string& config)
+      {
+        // if given option --music-config,
+        // the launch is categorized as MPMD
+        if (!getOption(argc, argv, opConfigFileName, config) )
+          return false;
+        else
+          return true;
+      }
+
+
+      void
+      Setup::loadConfigFile (std::string filename, std::string &result)
+      {
+        std::ifstream config;
+        char* buffer;
+        int size = 0;
+        int myRank = MPI::COMM_WORLD.Get_rank ();
+        // Rank #0 is reading a file and broadcast it to each rank in the launch
+        if (myRank == 0)
+          {
+            config.open (filename.c_str ());
+            if (!config.is_open ())
+              {
+                std::ostringstream oss;
+                oss << "MUSIC: Couldn't open configuration file: " << filename;
+                error0 (oss.str ());
+              }
+
+            size = config.tellg ();
+            config.seekg (0, std::ios_base::end);
+            long cur_pos = config.tellg ();
+            size = cur_pos - size;
+            config.seekg (0, std::ios_base::beg);
+          }
+        // first broadcast the size of the file
+        MPI::COMM_WORLD.Bcast (&size, 1, MPI::INT, 0);
+        buffer = new char[size];
+
+        if (myRank == 0)
+          config.read (buffer, size);
+        // then broadcast the file but itself
+        MPI::COMM_WORLD.Bcast (buffer, size, MPI::BYTE, 0);
+        // parseMapFile (app_name, std::string (buffer, size), result);
+        if (myRank == 0)
+          config.close ();
+
+        result.assign (buffer);
+        delete[] buffer;
   }
 
 
@@ -337,14 +319,14 @@ namespace MUSIC {
   bool 
   Setup::isLastSetupInstance()
   {
-    return instance_count_ <= 1; 
+    return data_.setups_.size() <= 1; 
   }
 
   
   MPI::Intracomm
   Setup::communicator ()
   {
-    return comm_;
+    return data_.comm_;
   }
 
 
@@ -386,7 +368,7 @@ namespace MUSIC {
   int
   Setup::nProcs ()
   {
-    return comm_.Get_size ();
+    return data_.comm_.Get_size ();
   }
 
 
@@ -482,7 +464,7 @@ namespace MUSIC {
   
   void Setup::addConnection (Connection* c)
   {
-    connections_->push_back (c);
+    connections_.push_back (c);
   }
 
 }
