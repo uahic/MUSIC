@@ -1,10 +1,10 @@
 #include "music/music_launcher.hh"
+#include "music/application_mapper.hh"
+#include <cassert>
 
 namespace MUSIC
 {
-  const char* const MPMDLauncher::opConfigFileName = "--music-config";
-  const char* const ConfigurationFactory::opAppLabel = "--app-label";
-  static std::string err_env_invalid = "The given environment variable is not set!;
+  static std::string err_env_invalid = "The given environment variable is not set!";
   static std::string err_handler_not_responsible = "Attempt to perform an action on unresponsible LaunchLauncher";
 
   bool MPMDLauncher::isResponsible()
@@ -16,16 +16,21 @@ namespace MUSIC
       return true;
   }
 
+
+
   std::unique_ptr<Configuration> MPMDLauncher::getConfiguration()
   {
         std::string config_file;
+		std::string config = "";
+		// TODO wrap in MPI-like assert
+		assert (getOption(argc_, argv_, opConfigFileName, config));
         loadConfigFile (config, config_file);
 
         std::string app_label;
-        std::string binary (argv[0]);
+        std::string binary (argv_[0]);
         // argv[0] is the name of the program,
         // or an empty string if the name is not available
-        if (!getOption (argc, argv, opAppLabel, app_label)
+        if (!getOption (argc_, argv_, opAppLabel, app_label)
             && binary.length () == 0)
           {
             std::ostringstream oss;
@@ -34,9 +39,8 @@ namespace MUSIC
           }
 
         std::istringstream config_istream (config_file);
-        config_ = new Configuration ();
+        auto config_ = new Configuration ();
         ApplicationMapper app_mapper(config_);
-		// TODO get PortCodes
         app_mapper.map(&config_istream, binary, app_label);
 		return std::unique_ptr<Configuration> (config_);
   }
@@ -163,8 +167,9 @@ namespace MUSIC
 			return e;
 
 	}
-	// Default case
-	MusicLauncher default_launcher =  DefaultLauncher();
+	// Default case(
+	// TODO critical
+	MusicLauncher* default_launcher = std::static_cast<new DefaultLauncher ();
 	default_launcher.init(argc, argv);
 	return default_launcher;
   }

@@ -60,7 +60,7 @@ namespace MUSIC
 	leader_ (app_.leader ()),
 	comm (app_.communicator ()),
 	scheduler (new Scheduler (comm, leader_)),
-	mAgent (0),
+	mAgent (0)
   {
 	setup ();
   }
@@ -176,8 +176,8 @@ namespace MUSIC
 	SPVec<Port>::iterator p;
     for (p = ports.begin (); p != ports.end (); ++p)
       {
-        TickingPort* tp = dynamic_cast<TickingPort*> (*p);
-		std::shared_ptr<TickingPort> tp (std::dynamic_pointer_cast<TickingPort> (port));
+        /* TickingPort* tp = dynamic_cast<TickingPort*> (*p); */
+		std::shared_ptr<TickingPort> tp (std::dynamic_pointer_cast<TickingPort> (p));
         if (tp != nullptr)
           tickingPorts.push_back (tp);
       }

@@ -1,6 +1,6 @@
 #ifndef MUSIC_LAUNCHER_HH
-
 #include "music/music-config.hh"
+
 #if MUSIC_USE_MPI
 #include <mpi.h>
 
@@ -8,8 +8,8 @@
 #include <vector>
 #include <memory>
 
-#include "music/configuration.hh"
-#include "music/error.hh"
+#include <music/configuration.hh>
+#include <music/error.hh>
 
 namespace MUSIC
 {
@@ -24,7 +24,7 @@ namespace MUSIC
 			// Rename that?
 			void init (int argc, char** argv, MPI::MPI_Comm comm) { argc_ = argc; argv_ = argv, comm_ = comm };
 			bool launchedByMusic() { return launchedByMusic_; }
-		private:
+		protected:
 			bool launchedByMusic_ {false};
 			int argc_ {0};
 			char** argv_ {nullptr};
@@ -37,7 +37,9 @@ namespace MUSIC
 
 		public:
 
-			MPMDLauncher (): launchedByMusic_ (true) {};
+			MPMDLauncher ()
+				: launchedByMusic_ (true)
+			{}
 			bool isResponsible () override;
 			std::unique_ptr<Configuration> getConfiguration()  override;
 			MPI::MPI_Comm getComm()  override;
@@ -45,13 +47,16 @@ namespace MUSIC
 		private:
 			void loadConfigFile(std::string filename, std::string& result);
   			bool getOption (int argc, char** argv, std::string option, std::string& result);
+			constexpr static const char* const opConfigFileName = "--music-config";
+			constexpr static const char* const opAppLabel = "--app-label";
 	};
 
 	class ExecLauncher : public MusicLauncher
 	{
 		public:
-			ExecLauncher (): {};
-			bool isResponsible()  override;
+			ExecLauncher ()
+			{}
+			bool isResponsible() override;
 			std::unique_ptr<Configuration> getConfiguration()  override;
 			MPI::MPI_Comm getComm()  override;
 
@@ -61,7 +66,7 @@ namespace MUSIC
 
 	class DefaultLauncher : public MusicLauncher
 	{
-		DefaultLauncher (): {};
+		DefaultLauncher () {}
 		bool isResponsible()  override;
 		std::unique_ptr<Configuration> getConfiguration()  override;
 		MPI::MPI_Comm getComm()  override;
@@ -72,8 +77,9 @@ namespace MUSIC
 	{
 		public:
 			MUSICLauncherFactory ():
-				launchers_ { MPMDLauncher(), ExecLauncher() } {};
-			void create (int argc, char** argv, MPI::MPI_Comm comm = MPI::COMM_WORLD);
+				launchers_ { MPMDLauncher(), ExecLauncher() }
+			{}
+			MusicLauncher create (int argc, char** argv, MPI::MPI_Comm comm = MPI::COMM_WORLD);
 			void addLauncher(MusicLauncher s);
 
 		private:
@@ -82,5 +88,7 @@ namespace MUSIC
 
 }
 
+
 #endif
 #define MUSIC_LAUNCHER_HH
+#endif
