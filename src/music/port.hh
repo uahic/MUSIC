@@ -31,11 +31,13 @@
 #include <music/sampler.hh>
 #include <music/event_routing_map.hh>
 #include <music/connectivity.hh>
+#include <music/connection.hh>
 #include <music/spatial.hh>
 
 namespace MUSIC {
 
   class Application;
+
 /* remedius
  * 1. Since one more type of Connector was added - CollectiveConnector,
  * to avoid branching of different Connector return types,
@@ -73,7 +75,7 @@ namespace MUSIC {
     virtual ~Port()
 	{
 		std::for_each (connections_.begin(), connections_.end(),
-				[](Connection* c) {del c;}
+				[](Connection* c) {delete c;}
 				);
 	};
 
@@ -84,6 +86,10 @@ namespace MUSIC {
     bool isMapped_;
     friend class Runtime;
   };
+
+
+
+
 
 
   // A ticking port is a port which needs to be updated at every tick ()
@@ -262,6 +268,7 @@ namespace MUSIC {
     Connector* makeConnector (ConnectorInfo connInfo);
     friend class Implementer;
   };
+
 
   class MessageInputPort : public MessagePort,
 			   public InputPort {

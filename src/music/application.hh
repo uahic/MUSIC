@@ -8,14 +8,14 @@
 #include <sstream>
 #include <memory>
 #include <mpi.h>
-#include "music/configuration.hh"
-#include "music/error.hh"
-#include "music/port.hh"
-#include "music/runtime.hh"
-#include "music/connectivity.hh"
-#include "music/port_manager.hh"
-#include "music/music_luncher.hh"
-#include "music/misc.hh"
+#include <music/configuration.hh>
+#include <music/error.hh>
+#include <music/port.hh>
+#include <music/runtime.hh>
+#include <music/connectivity.hh>
+#include <music/port_manager.hh>
+#include <music/music_launcher.hh>
+#include <music/misc.hh>
 
 
 namespace MUSIC
@@ -62,6 +62,7 @@ namespace MUSIC
 			std::shared_ptr<EventOutputPort> publishEventOutput (std::string identifier);
 			std::shared_ptr<MessageInputPort> publishMessageInput (std::string identifier);
 			std::shared_ptr<MessageOutputPort> publishMessageOutput (std::string identifier);
+			PortConnectivityManager& getPortConnectivityManager () const;
 
 		private:
 			double timebase_;
@@ -84,7 +85,6 @@ namespace MUSIC
 			void initialize_MPI(int& argc, char**& argv);
 
 			MPI::Intracomm communicator ();
-			PortConnectivityManager& getPortConnectivityManager () const;
 			int applicationColor();
 			int nProcs () const;
 			int leader () const;

@@ -7,18 +7,19 @@
 #include <string>
 #include <memory>
 #include <mpi.h>
-#include "music/configuration.hh"
-#include "music/error.hh"
-#include "music/port.hh"
-#include "music/runtime.hh"
-#include "music/misc.hh"
-#include "music/application.hh"
+#include <music/configuration.hh>
+#include <music/error.hh>
+#include <music/port.hh>
+#include <music/misc.hh>
+/* #include <music/application.hh> */
 
 namespace MUSIC
 {
 	// We could also use raw pointers but we do not (see application.hh why so)
 	/* using PortMap = std::map<std::string, std::shared_ptr<Port>>; */
 	using PortMap = std::map<std::string, std::weak_ptr<Port>>;
+	class Application;
+	class Runtime;
 
 
 	class PortConnectivityManager
@@ -52,6 +53,8 @@ namespace MUSIC
 			/* void disconnect (std::string identifier); */
 			void disconnect (std::string appName, std::string portName);
 			void disconnect (std::string senderApp, std::string senderPort, std::string receiverApp, std::string receiverPort);
+
+			// TODO disconnect all
 
 			bool isConnected (std::string identifier) const;
 			bool isInstantiated (std::string identifier);
