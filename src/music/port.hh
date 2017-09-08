@@ -128,7 +128,7 @@ namespace MUSIC {
     void map (DataMap* dmap, int maxBuffered);
     void tick ();
   };
-  
+
   class ContInputPort : public ContPort, public InputPort {
     double delay_;
     void mapImpl (DataMap* dmap,
@@ -252,6 +252,15 @@ namespace MUSIC {
     void mapImpl (int maxBuffered);
     Connector* makeConnector (ConnectorInfo connInfo);
     friend class Implementer;
+  };
+
+  class MessageOutOfBandOutputPort : public MessageOutputPort {
+	  public:
+		using MessageOutputPort::MessageOutputPort;
+	protected:
+		/* using MessageOutputPort::mapImpl; */
+		Connector* makeConnector (ConnectorInfo connInfo);
+		friend class Implementer;
   };
 
   class MessageInputPort : public MessagePort,
